@@ -84,18 +84,13 @@ const requestPayment = (cost) => {
         prices: [{ label: "⭐️ Yulduz", amount: cost }],
       }, (response) => {
         if (response.ok) {
-          currentStars -= cost; // Frontend’da balansni yangilash
-          updateStarsDisplay();
-          elements.result.innerHTML = "";
-          spin(() => {
-            // Botga to‘lov muvaffaqiyatli ekanligini bildirish
-            window.Telegram.WebApp.sendData(JSON.stringify({
-              action: "spin_payment",
-              cost: cost,
-              payload: payload,
-              userId: userId
-            }));
-          });
+          // To‘lov muvaffaqiyatli bo‘lsa, bot balansni yangilaydi
+          window.Telegram.WebApp.sendData(JSON.stringify({
+            action: "spin_payment",
+            cost: cost,
+            payload: payload,
+            userId: userId
+          }));
         } else {
           elements.result.innerHTML = "❌ To‘lov amalga oshmadi!";
         }
