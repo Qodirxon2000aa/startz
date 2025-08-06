@@ -14,7 +14,7 @@ const elements = {
   starDisplay: document.getElementById("starCount"),
 };
 
-let currentStars = 100;
+let currentStars = 100; // Boshlang‘ich balans (serverdan olish kerak)
 
 const updateStarsDisplay = () => {
   elements.starDisplay.textContent = currentStars;
@@ -65,33 +65,43 @@ const spinDemo = () => {
 };
 
 const requestPayment = (cost) => {
-  if (currentStars < cost) {
-    elements.result.innerHTML = "❌ Yetarli yulduz yo'q!";
+  if (!window.Telegram?.WebApp) {
+    elements.result.innerHTML = "❌ Telegram Web App topilmadi!";
     return;
   }
 
-  if (window.Telegram?.WebApp) {
-    const userId = window.Telegram.WebApp.initDataUnsafe?.user?.id || "test_user";
-    const payload = `stars_user_${userId}`;
+  const userId = window.Telegram.WebApp.initDataUnsafe?.user?.id || "test_user";
+  const payload = `spin_${userId}_${cost}`;
 
-    window.Telegram.WebApp.showConfirm(`Aylantirish uchun ${cost} yulduz ishlatilsinmi?`, (confirmed) => {
-      if (confirmed) {
-        currentStars -= cost;
-        updateStarsDisplay();
-        elements.result.innerHTML = "";
-        spin(() => {
-          // To‘lov muvaffaqiyatli bo‘lsa, bot to‘lovni qayta ishlaydi
-          window.Telegram.WebApp.sendData(JSON.stringify({
-            action: "spin_payment",
-            cost: cost,
-            payload: payload
-          }));
-        });
-      }
-    });
-  } else {
-    elements.result.innerHTML = "❌ Telegram Web App topilmadi!";
-  }
+  // Telegram Stars orqali to‘lov so‘rovi
+  window.Telegram.WebApp.showConfirm(`Aylantirish uchun ${cost} ⭐️ ishlatilsinmi?`, (confirmed) => {
+    if (confirmed) {
+      window.Telegram.WebApp.sendInvoice({
+        title: "Aylantirish uchun to‘lov",
+        description: `${cost} ⭐️ bilan Sovg‘a Spinner aylantirish`,
+        payload: payload,
+        currency: "XTR",
+        prices: [{ label: "⭐️ Yulduz", amount: cost }],
+      }, (response) => {
+        if (response.ok) {
+          currentStars -= cost; // Frontend’da balansni yangilash
+          updateStarsDisplay();
+          elements.result.innerHTML = "";
+          spin(() => {
+            // Botga to‘lov muvaffaqiyatli ekanligini bildirish
+            window.Telegram.WebApp.sendData(JSON.stringify({
+              action: "spin_payment",
+              cost: cost,
+              payload: payload,
+              userId: userId
+            }));
+          });
+        } else {
+          elements.result.innerHTML = "❌ To‘lov amalga oshmadi!";
+        }
+      });
+    }
+  });
 };
 
 // Boshlang‘ich holatni yangilash
